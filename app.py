@@ -1,8 +1,10 @@
+from operator import le
 from flask import Flask, request, jsonify
 import numpy as np
 import pandas as pd
 import requests
 import datetime
+from scipy.spatial import distance
 
 app = Flask(__name__)
 
@@ -16,105 +18,167 @@ def get_movies():
             + str(i)
         )
         response = requests.get(link)
-        print(response.json())
+        # print(response.json())
         results = response.json()["results"]
         for j in range(0, len(results)):
             movies.append(results[j])
-        print("##################")
-        print("##################")
-        print("##################")
-        print("##################")
-        print("##################")
-        print("##################")
-        print("##################")
-    print(movies)
+        # print("##################")
+        # print("##################")
+        # print("##################")
+        # print("##################")
+        # print("##################")
+        # print("##################")
+        # print("##################")
+    # print(movies)
     cols = [
         "title",
         "vote_average",
         "release_date",
         "adult",
-        "genre_ids",
         "vote_count",
         "popularity",
     ]
     df = pd.DataFrame(columns=cols)
 
-    print("##################")
-    print("##################")
-    print("##################")
-    print("##################")
-    print("##################")
-    print("##################")
-    print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
 
-    print(df)
+    # print(df)
 
     for movie in movies:
-        print("***********")
-        print(movie)
-        df = df.append(
-            {
-                "title": movie["name"]
-                if "title" not in movie.keys()
-                else movie["title"],
-                "vote_average": movie["vote_average"],
-                "release_date": (
-                    datetime.date.today()
-                    - datetime.datetime.strptime(
-                        movie["first_air_date"], "%Y-%m-%d"
-                    ).date()
-                ).days
-                if "first_air_date" in movie.keys()
-                else (
-                    datetime.date.today()
-                    - datetime.datetime.strptime(
-                        movie["release_date"], "%Y-%m-%d"
-                    ).date()
-                ).days,
-                "adult": 0
-                if "adult" not in movie.keys()
-                else 1
-                if movie["adult"] == True
-                else 0,
-                "genre_ids": movie["genre_ids"],
-                "vote_count": movie["vote_count"],
-                "popularity": movie["popularity"],
-            },
-            ignore_index=True,
+        # print("***********")
+        # print(movie)
+        hasDate = (
+            movie["first_air_date"] != ""
+            if "first_air_date" in movie.keys()
+            else movie["release_date"] != ""
         )
+        if hasDate == True:
+            df = df.append(
+                {
+                    "title": movie["name"]
+                    if "title" not in movie.keys()
+                    else movie["title"],
+                    "vote_average": movie["vote_average"],
+                    "release_date": (
+                        datetime.date.today()
+                        - datetime.datetime.strptime(
+                            movie["first_air_date"], "%Y-%M-%d"
+                        ).date()
+                    ).days
+                    if "first_air_date" in movie.keys()
+                    else (
+                        datetime.date.today()
+                        - datetime.datetime.strptime(
+                            movie["release_date"], "%Y-%M-%d"
+                        ).date()
+                    ).days,
+                    "adult": 0
+                    if "adult" not in movie.keys()
+                    else 1
+                    if movie["adult"] == True
+                    else 0,
+                    "vote_count": movie["vote_count"],
+                    "popularity": movie["popularity"],
+                },
+                ignore_index=True,
+            )
 
-    print("##################")
-    print("##################")
-    print("##################")
-    print("##################")
-    print("##################")
-    print("##################")
-    print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
+    # print("##################")
 
     # GETTING ALL RELEVANT PARAMETERS WITHIN THE RANGE 0-10
-    # min_date = df["release_date"].min()
-    # max_date = df["release_date"].max()
-    # df["release_date"] = df["release_date"].map(
-    #     lambda release_date: ((release_date - min_date) / (max_date - min_date)) * 10
-    # )
+    min_date = df["release_date"].min()
+    max_date = df["release_date"].max()
+    df["release_date"] = df["release_date"].map(
+        lambda release_date: ((release_date - min_date) / (max_date - min_date)) * 10
+    )
 
-    # min_vote = df["vote_count"].min()
-    # max_vote = df["vote_count"].max()
-    # df["vote_count"] = df["vote_count"].map(
-    #     lambda vote: ((vote - min_vote) / (max_vote - min_vote)) * 10
-    # )
+    min_vote = df["vote_count"].min()
+    max_vote = df["vote_count"].max()
+    df["vote_count"] = df["vote_count"].map(
+        lambda vote: ((vote - min_vote) / (max_vote - min_vote)) * 10
+    )
 
-    # min_popularity = df["popularity"].min()
-    # max_popularity = df["popularity"].max()
-    # df["popularity"] = df["popularity"].map(
-    #     lambda popularity: (
-    #         (popularity - min_popularity) / (max_popularity - min_popularity)
-    #     )
-    #     * 10
-    # )
+    min_popularity = df["popularity"].min()
+    max_popularity = df["popularity"].max()
+    df["popularity"] = df["popularity"].map(
+        lambda popularity: (
+            (popularity - min_popularity) / (max_popularity - min_popularity)
+        )
+        * 10
+    )
 
-    print(df)
-    return ""
+    # print(df)
+
+    movie_query = request.json["movies"]
+
+    movie_recommendation_data = []
+
+    for index, row in df.iterrows():
+        movie_recommendation_data.append(
+            [
+                row["vote_average"],
+                row["release_date"],
+                row["adult"],
+                row["vote_count"],
+                row["popularity"],
+            ]
+        )
+
+    # print(movie_recommendation_data)
+
+    similarity_matrix = []
+
+    for i in range(len(movie_recommendation_data)):
+        similarity = []
+        for j in range(len(movie_recommendation_data)):
+            similarity.append(
+                (
+                    1
+                    - distance.cosine(
+                        movie_recommendation_data[i], movie_recommendation_data[j]
+                    ),
+                    j,
+                )
+            )
+        similarity_matrix.append(similarity)
+
+    # print(similarity_matrix)
+
+    # print(df)
+
+    response_movies = []
+
+    for movie in movie_query:
+        indexes = df.index[df["title"] == movie].tolist()
+        if len(indexes) != 0:
+            index = indexes[0]
+            movie_details = df.iloc[index]
+            sim_matrix = similarity_matrix[index]
+            sim_matrix.sort(key=lambda x: x[0], reverse=True)
+            # print(sim_matrix[1:6])
+            # print(movie_details["title"])
+            similar_movies = []
+            for i in sim_matrix[1:6]:
+                sim_movie_details = df.iloc[i[1]]
+                similar_movies.append(sim_movie_details["title"])
+            # print(similar_movies)
+            response_movies.append(
+                {"name": movie_details["title"], "similar_movies": similar_movies}
+            )
+
+    return jsonify({"message": "Success", "movie_list": response_movies})
 
 
 @app.route("/getsalary", methods=["POST"])
