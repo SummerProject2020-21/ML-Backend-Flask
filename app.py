@@ -1,15 +1,16 @@
 from operator import le
-from flask import Flask, request, jsonify
 import numpy as np
 import pandas as pd
 import requests
 import datetime
+from flask import Flask, request, jsonify
 from scipy.spatial import distance
 from flask_cors import CORS
 
-app = Flask(__name__)
-CORS(app)
 
+app = Flask(__name__)
+
+CORS(app, support_credentials=True)
 
 @app.route("/getmovies", methods=["POST"])
 def get_movies():
