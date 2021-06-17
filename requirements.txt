@@ -24,7 +24,7 @@ certifi==2019.11.28
 cffi==1.14.0
 chardet==3.0.4
 chart-studio==1.1.0
-click==8.0.1
+click
 clyent==1.2.2
 colorama==0.4.4
 colorlover==0.3.0
